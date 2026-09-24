@@ -64,7 +64,7 @@ Implementation: `src/lib/search-course-tree.ts`. If the sandbox is still down, t
 
 ## Tests
 
-Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Live API fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`.
+Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Live API fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests in `tests/components/course-search.test.tsx` cover successful rendering, empty results, network errors, and the loading state.
 
 ## Project layout
 
