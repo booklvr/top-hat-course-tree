@@ -1,4 +1,5 @@
 import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema";
+import { assertValidCourseTree } from "@/lib/validate-course-tree";
 
 /**
  * One row in render order.
@@ -17,6 +18,8 @@ export type CourseTreeRow = {
  * nested level increases depth by one. Root and sibling order are preserved.
  */
 export function flattenCourseTree(items: CourseItem[]): CourseTreeRow[] {
+  assertValidCourseTree(items);
+
   // Index children by parent so the walk can find a parent's children in one
   // lookup. parent_id 0 holds the roots. Push keeps input encounter order.
   const childrenByParentId = new Map<number, CourseItem[]>();
@@ -31,21 +34,25 @@ export function flattenCourseTree(items: CourseItem[]): CourseTreeRow[] {
   }
 
   const rows: CourseTreeRow[] = [];
+  const pendingRows: CourseTreeRow[] = [];
+  const roots = childrenByParentId.get(0) ?? [];
 
-  // Preorder: emit the child, then walk its children before the next sibling.
-  // That places the whole subtree directly after the parent.
-  function appendSubtree(parentId: number, depth: number) {
-    const children = childrenByParentId.get(parentId);
-    if (!children) return;
+  // Push in reverse order because the stack is last-in, first-out. This is an
+  // iterative preorder traversal: emit a parent, then each of its descendants.
+  for (let index = roots.length - 1; index >= 0; index -= 1) {
+    pendingRows.push({ item: roots[index], depth: 0 });
+  }
 
-    for (const item of children) {
-      rows.push({ item, depth });
-      appendSubtree(item.id, depth + 1);
+  while (pendingRows.length > 0) {
+    const row = pendingRows.pop();
+    if (!row) break;
+
+    rows.push(row);
+    const children = childrenByParentId.get(row.item.id) ?? [];
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      pendingRows.push({ item: children[index], depth: row.depth + 1 });
     }
   }
 
-  // Roots are the children of parent id 0, so they start at depth 0.
-  // Each recursive call passes depth + 1 to that parent's children.
-  appendSubtree(0, 0);
   return rows;
 }

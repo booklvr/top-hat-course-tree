@@ -7,14 +7,25 @@
 
 import { z } from "zod"
 
+import { getCourseTreeValidationIssues } from "@/lib/validate-course-tree"
+
 export const courseItemSchema = z.object({
-  id: z.number(),
+  id: z.number().int().positive(),
   name: z.string(),
-  parent_id: z.number(),
+  parent_id: z.number().int().nonnegative(),
 })
 
 /** The search API returns a flat array of course items. */
-export const courseTreeSearchResponseSchema = z.array(courseItemSchema)
+export const courseTreeSearchResponseSchema = z
+  .array(courseItemSchema)
+  .superRefine((items, context) => {
+    for (const issue of getCourseTreeValidationIssues(items)) {
+      context.addIssue({
+        code: "custom",
+        message: issue.message,
+      })
+    }
+  })
 
 /**
  * Output types — derived from schemas (single source of truth).

@@ -27,6 +27,24 @@ describe("courseTreeSearchResponseSchema (boundary)", () => {
     })
     expect(result.success).toBe(false)
   })
+
+  it("rejects duplicate ids and invalid parent relationships", () => {
+    const result = courseTreeSearchResponseSchema.safeParse([
+      { id: 1, name: "Root", parent_id: 0 },
+      { id: 1, name: "Duplicate", parent_id: 0 },
+      { id: 2, name: "Orphan", parent_id: 99 },
+    ])
+
+    expect(result.success).toBe(false)
+  })
+
+  it("requires positive integer ids and non-negative integer parent ids", () => {
+    expect(
+      courseTreeSearchResponseSchema.safeParse([
+        { id: 0, name: "Reserved id", parent_id: -1 },
+      ]).success,
+    ).toBe(false)
+  })
 })
 
 describe("parseCourseTreeSearchPayload", () => {
@@ -38,6 +56,15 @@ describe("parseCourseTreeSearchPayload", () => {
     expect(() => parseCourseTreeSearchPayload({ detail: "Not Found" })).toThrow(
       SEARCH_ERROR_MESSAGE,
     )
+  })
+
+  it("maps invalid tree topology to the user-facing search error", () => {
+    expect(() =>
+      parseCourseTreeSearchPayload([
+        { id: 1, name: "First", parent_id: 2 },
+        { id: 2, name: "Second", parent_id: 1 },
+      ]),
+    ).toThrow(SEARCH_ERROR_MESSAGE)
   })
 })
 

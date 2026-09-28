@@ -93,4 +93,26 @@ describe("flattenCourseTree", () => {
       { id: 4, name: "Procedure", depth: 3 },
     ]);
   });
+
+  it("rejects malformed relationships instead of silently omitting items", () => {
+    const items: CourseItem[] = [
+      { id: 1, name: "Orphan", parent_id: 99 },
+    ];
+
+    expect(() => flattenCourseTree(items)).toThrow("Invalid course tree");
+  });
+
+  it("handles deeply nested valid trees without recursive stack overflow", () => {
+    const itemCount = 10_000;
+    const items: CourseItem[] = Array.from({ length: itemCount }, (_, index) => ({
+      id: index + 1,
+      name: `Item ${index + 1}`,
+      parent_id: index,
+    }));
+
+    const rows = flattenCourseTree(items);
+
+    expect(rows).toHaveLength(itemCount);
+    expect(rows[itemCount - 1].depth).toBe(itemCount - 1);
+  });
 });

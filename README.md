@@ -1,6 +1,6 @@
 # Course Tree Search
 
-A small React app for searching Top Hat course content. The sandbox API returns a **flat list** of folder items; the UI turns that into an indented hierarchy (children immediately after their parent, depth shown with hyphens).
+A small React app for searching Top Hat course content. The sandbox API returns a **flat list** of folder items; the UI validates its structure and turns it into an indented hierarchy (children immediately after their parent, depth shown with hyphens).
 
 ## Requirements
 
@@ -64,7 +64,7 @@ Implementation: `src/lib/search-course-tree.ts`. If the sandbox is still down, t
 
 ## Tests
 
-Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Live API fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests in `tests/components/course-search.test.tsx` cover successful rendering, empty results, network errors, and the loading state.
+Tree ordering, indentation, and deep hierarchy handling are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Topology validation tests cover duplicate ids, missing parents, self-references, and cycles in `tests/lib/validate-course-tree.test.ts`. Live API fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests in `tests/components/course-search.test.tsx` cover successful rendering, empty results, network errors, and the loading state.
 
 ## Project layout
 
@@ -72,5 +72,6 @@ Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.t
 - `src/api/course-tree-search.ts` — chooses live API vs mocks (`VITE_USE_MOCK_API`)
 - `src/schemas/course-tree/courseTreeSchema.ts` — API boundary schemas and inferred `CourseItem`
 - `src/lib/course-tree.ts` — flat list → preorder rows with depth (`CourseTreeRow`)
+- `src/lib/validate-course-tree.ts` — validates ids and parent relationships
 - `src/lib/search-course-tree.ts` — fetch sandbox API, validate JSON (`parseCourseTreeSearchPayload`)
 - `src/mocks/` — mock data, client-side filter, scenario picker (dev only)
