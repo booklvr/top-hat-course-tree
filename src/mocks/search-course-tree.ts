@@ -6,14 +6,32 @@ import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema"
 
 const MOCK_NETWORK_DELAY_MS = 1000
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      signal?.removeEventListener("abort", handleAbort)
+      resolve()
+    }, ms)
+
+    function handleAbort() {
+      window.clearTimeout(timeoutId)
+      reject(signal?.reason)
+    }
+
+    signal?.addEventListener("abort", handleAbort, { once: true })
   })
 }
 
-export async function searchMockCourseTree(query: string): Promise<CourseItem[]> {
-  await delay(MOCK_NETWORK_DELAY_MS)
+export async function searchMockCourseTree(
+  query: string,
+  signal?: AbortSignal,
+): Promise<CourseItem[]> {
+  await delay(MOCK_NETWORK_DELAY_MS, signal)
 
   const scenario = getMockScenario()
 

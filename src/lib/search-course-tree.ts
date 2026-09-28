@@ -23,15 +23,19 @@ export function parseCourseTreeSearchPayload(payload: unknown): CourseItem[] {
 /**
  * Searches Top Hat's course-tree endpoint and returns the flat list of items.
  */
-export async function searchCourseTree(query: string): Promise<CourseItem[]> {
+export async function searchCourseTree(
+  query: string,
+  signal?: AbortSignal,
+): Promise<CourseItem[]> {
   const url = new URL(COURSE_TREE_SEARCH_URL);
   url.searchParams.set("query", query);
 
   let response: Response;
   try {
-    response = await fetch(url);
-  } catch {
-    throw new Error(SEARCH_ERROR_MESSAGE);
+    response = await fetch(url, { signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new Error(SEARCH_ERROR_MESSAGE, { cause: error });
   }
 
   if (!response.ok) {
@@ -41,8 +45,9 @@ export async function searchCourseTree(query: string): Promise<CourseItem[]> {
   let payload: unknown;
   try {
     payload = await response.json();
-  } catch {
-    throw new Error(SEARCH_ERROR_MESSAGE);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new Error(SEARCH_ERROR_MESSAGE, { cause: error });
   }
 
   return parseCourseTreeSearchPayload(payload);

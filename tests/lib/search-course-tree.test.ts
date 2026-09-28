@@ -59,6 +59,20 @@ describe("searchCourseTree", () => {
     expect(requestedUrl.searchParams.get("query")).toBe("Lab & notes")
   })
 
+  it("passes an abort signal to fetch and preserves cancellation errors", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fetchMock = vi.fn().mockRejectedValue(controller.signal.reason)
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      searchCourseTree("Lab", controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" })
+    expect(fetchMock).toHaveBeenCalledWith(expect.any(URL), {
+      signal: controller.signal,
+    })
+  })
+
   it("surfaces a network failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Offline")))
 

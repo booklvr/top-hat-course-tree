@@ -1,19 +1,20 @@
-import { useState, type SubmitEvent } from "react"
+import { useEffect, useState, type ChangeEvent } from "react";
 
-import { Button } from "@/components/ui/button"
+import { searchCourseTree } from "@/api/course-tree-search";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import { searchCourseTree } from "@/api/course-tree-search"
-import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree"
-import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree";
+import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree";
 
-type RequestStatus = "idle" | "loading" | "success" | "error"
+type RequestStatus = "idle" | "debouncing" | "loading" | "success" | "error";
+
+const SEARCH_DEBOUNCE_MS = 250;
 
 function SearchResultsSkeleton() {
   return (
@@ -24,32 +25,50 @@ function SearchResultsSkeleton() {
       <Skeleton className="ml-4 h-4 w-full max-w-md" />
       <Skeleton className="h-4 w-full max-w-xs" />
     </div>
-  )
+  );
 }
 
 export function CourseSearch() {
-  const [query, setQuery] = useState("")
-  const [rows, setRows] = useState<CourseTreeRow[]>([])
-  const [status, setStatus] = useState<RequestStatus>("idle")
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<CourseTreeRow[]>([]);
+  const [status, setStatus] = useState<RequestStatus>("idle");
 
-  const trimmedQuery = query.trim()
-  const isLoading = status === "loading"
+  const isLoading = status === "loading";
 
-  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
+  useEffect(() => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) return;
 
-    if (!trimmedQuery || isLoading) return
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setStatus("loading");
 
-    setStatus("loading")
+      try {
+        const items = await searchCourseTree(trimmedQuery, controller.signal);
+        if (controller.signal.aborted) return;
 
-    try {
-      const items = await searchCourseTree(trimmedQuery)
-      setRows(flattenCourseTree(items))
-      setStatus("success")
-    } catch {
-      setRows([])
-      setStatus("error")
-    }
+        setRows(flattenCourseTree(items));
+        setStatus("success");
+      } catch {
+        // Aborting is expected when the query changes or the component unmounts.
+        if (controller.signal.aborted) return;
+
+        setRows([]);
+        setStatus("error");
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [query]);
+
+  function handleQueryChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextQuery = event.target.value;
+    setQuery(nextQuery);
+    setRows([]);
+    setStatus(nextQuery.trim() ? "debouncing" : "idle");
   }
 
   return (
@@ -66,36 +85,22 @@ export function CourseSearch() {
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
             Course Tree Search
           </h1>
-          <CardDescription>
-            Search course content by keyword.
-          </CardDescription>
+          <CardDescription>Search course content by keyword.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-0">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <label htmlFor="course-search" className="text-sm font-medium">
-                  Search
-                </label>
-                <Input
-                  id="course-search"
-                  name="query"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="e.g. Lab"
-                  autoComplete="off"
-                  disabled={isLoading}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={!trimmedQuery || isLoading}
-                className="min-w-24 shrink-0 hover:bg-primary-hover"
-              >
-                Search
-              </Button>
-            </div>
-          </form>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <label htmlFor="course-search" className="text-sm font-medium">
+              Search
+            </label>
+            <Input
+              id="course-search"
+              name="query"
+              value={query}
+              onChange={handleQueryChange}
+              placeholder="e.g. Lab"
+              autoComplete="off"
+            />
+          </div>
 
           <section
             aria-live="polite"
@@ -105,6 +110,12 @@ export function CourseSearch() {
             {status === "idle" ? (
               <p className="text-sm text-muted-foreground">
                 Results will appear here.
+              </p>
+            ) : null}
+
+            {status === "debouncing" ? (
+              <p className="text-sm text-muted-foreground">
+                Waiting for you to finish typing…
               </p>
             ) : null}
 
@@ -136,5 +147,5 @@ export function CourseSearch() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

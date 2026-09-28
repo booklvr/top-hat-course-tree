@@ -7,11 +7,14 @@ const useMockApi = import.meta.env.VITE_USE_MOCK_API === "true"
  * Course tree search used by the UI: live sandbox API, or local mocks when
  * `VITE_USE_MOCK_API=true` (see `pnpm dev:mock`).
  */
-export async function searchCourseTree(query: string): Promise<CourseItem[]> {
+export async function searchCourseTree(
+  query: string,
+  signal?: AbortSignal,
+): Promise<CourseItem[]> {
   if (useMockApi) {
     const { searchMockCourseTree } = await import("@/mocks/search-course-tree")
-    return searchMockCourseTree(query)
+    return searchMockCourseTree(query, signal)
   }
 
-  return searchLiveCourseTree(query)
+  return searchLiveCourseTree(query, signal)
 }

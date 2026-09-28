@@ -1,6 +1,6 @@
 # Course Tree Search
 
-A small React app for searching Top Hat course content. The sandbox API returns a **flat list** of folder items; the UI turns that into an indented hierarchy (children immediately after their parent, depth shown with hyphens).
+A small React app for searching Top Hat course content. The sandbox API returns a **flat list** of folder items; the UI turns that into an indented hierarchy (children immediately after their parent, depth shown with hyphens). Search runs automatically 500 ms after typing stops, and stale requests are cancelled with `AbortController`.
 
 ## Requirements
 
@@ -64,7 +64,7 @@ Implementation: `src/lib/search-course-tree.ts`. If the sandbox is still down, t
 
 ## Tests
 
-Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Live API fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests in `tests/components/course-search.test.tsx` cover successful rendering, empty results, network errors, and the loading state.
+Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Live API fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests in `tests/components/course-search.test.tsx` cover debounce timing, stale-request cancellation, successful rendering, empty results, network errors, and the loading state.
 
 ## Project layout
 
