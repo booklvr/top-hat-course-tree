@@ -171,6 +171,30 @@ describe("course tree HTTP API", () => {
     }
   })
 
+  it("validates repository results before sending them to the client", async () => {
+    const logger = { error: vi.fn() }
+    const invalidDataServer = await startTestServer({
+      logger,
+      search: async () => [
+        { id: "not-a-number", name: "Invalid item", parent_id: 0 },
+      ],
+    })
+
+    try {
+      const response = await fetch(
+        `${invalidDataServer.baseUrl}/treesearch/?query=Lab`,
+      )
+
+      expect(response.status).toBe(500)
+      expect(await response.json()).toMatchObject({
+        error: { code: "INTERNAL_ERROR" },
+      })
+      expect(logger.error).toHaveBeenCalledOnce()
+    } finally {
+      await invalidDataServer.close()
+    }
+  })
+
   it("aborts server-side work when the HTTP client disconnects", async () => {
     let receivedSignal: AbortSignal | undefined
     let notifySearchStarted: () => void = () => undefined

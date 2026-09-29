@@ -28,7 +28,7 @@ pnpm dev
 
 The browser requests `/api/treesearch/?query=...`. In development, Vite removes the `/api` prefix and proxies the request to `http://localhost:3001/treesearch/?query=...`. This keeps the browser request same-origin and avoids local CORS coupling.
 
-The API uses the assignment's Chemistry fixture as an in-memory database substitute. Search is case-insensitive and returns matching items together with the ancestors and descendants required for a complete hierarchy. It deliberately returns a flat array; ordering that array into display rows remains the client's responsibility.
+The API uses the assignment's Chemistry fixture as an in-memory database substitute. Search is case-insensitive and returns matching items together with the ancestors and descendants required for a complete hierarchy. It deliberately returns a flat array; ordering that array into display rows remains the client's responsibility. Client and server import the same Zod transport contract, so runtime validation and inferred TypeScript types cannot drift independently.
 
 ### API contract
 
@@ -97,13 +97,14 @@ Search filtering in mock mode is implemented in `src/mocks/filter-course-tree.ts
 
 ## Tests
 
-Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Client fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests in `tests/components/course-search.test.tsx` cover successful rendering, empty results, network errors, and the loading state. Server tests cover search semantics, request validation, response status codes, CORS, safe failures, and client-disconnect cancellation.
+Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.ts` (matches the assignment **Lab** example). Shared-contract tests cover request, response, item, and error schemas. Client fetch, response validation, and parsing are in `tests/lib/search-course-tree.test.ts`. Component tests cover successful rendering, empty results, network errors, and loading. Server tests cover search semantics, request validation, repository-output validation, response status codes, CORS, safe failures, and client-disconnect cancellation.
 
 ## Project layout
 
 - `src/components/course-search.tsx` — search form, loading/error/empty states, results list
 - `src/api/course-tree-search.ts` — chooses live API vs mocks (`VITE_USE_MOCK_API`)
-- `src/schemas/course-tree/courseTreeSchema.ts` — API boundary schemas and inferred `CourseItem`
+- `shared/course-tree-contract.ts` — shared Zod transport schemas and inferred types
+- `src/schemas/course-tree/courseTreeSchema.ts` — compatibility exports for client imports
 - `src/lib/course-tree.ts` — flat list → preorder rows with depth (`CourseTreeRow`)
 - `src/lib/search-course-tree.ts` — fetch the configured API and validate its JSON
 - `src/mocks/` — mock data, client-side filter, scenario picker (dev only)

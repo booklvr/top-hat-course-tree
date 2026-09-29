@@ -1,4 +1,4 @@
-import type { CourseItem } from "./course-tree.ts"
+import type { CourseItem } from "../shared/course-tree-contract.ts"
 
 /**
  * Searches names case-insensitively and returns a flat, self-contained tree.

@@ -60,6 +60,21 @@ describe("searchCourseTree", () => {
     expect(requestedUrl.searchParams.get("query")).toBe("Lab & notes")
   })
 
+  it("validates and normalizes the query before sending a request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(sampleItems),
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    await searchCourseTree("  Lab  ")
+    const requestedUrl = fetchMock.mock.calls[0][0] as URL
+    expect(requestedUrl.searchParams.get("query")).toBe("Lab")
+
+    await expect(searchCourseTree(" ")).rejects.toThrow(SEARCH_ERROR_MESSAGE)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it("surfaces a network failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Offline")))
 

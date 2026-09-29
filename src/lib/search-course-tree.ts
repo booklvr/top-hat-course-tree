@@ -1,4 +1,5 @@
 import {
+  courseTreeSearchRequestSchema,
   courseTreeSearchResponseSchema,
   type CourseItem,
 } from "@/schemas/course-tree/courseTreeSchema";
@@ -27,9 +28,16 @@ export function parseCourseTreeSearchPayload(payload: unknown): CourseItem[] {
  * Searches the configured course-tree endpoint and returns the flat list of items.
  */
 export async function searchCourseTree(query: string): Promise<CourseItem[]> {
+  let parsedQuery: string;
+  try {
+    parsedQuery = courseTreeSearchRequestSchema.parse({ query }).query;
+  } catch {
+    throw new Error(SEARCH_ERROR_MESSAGE);
+  }
+
   const baseUrl = globalThis.location?.origin ?? "http://localhost";
   const url = new URL(COURSE_TREE_SEARCH_URL, baseUrl);
-  url.searchParams.set("query", query);
+  url.searchParams.set("query", parsedQuery);
 
   let response: Response;
   try {

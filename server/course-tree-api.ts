@@ -1,10 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http"
 
+import {
+  apiErrorResponseSchema,
+  courseTreeSearchRequestSchema,
+  courseTreeSearchResponseSchema,
+  healthResponseSchema,
+  type ApiErrorCode,
+} from "../shared/course-tree-contract.ts"
 import { courseTreeItems } from "./course-tree-data.ts"
 import { searchCourseTree } from "./search-course-tree.ts"
-import type { CourseItem } from "./course-tree.ts"
-
-const MAX_QUERY_LENGTH = 100
 
 type SearchOptions = {
   signal: AbortSignal
@@ -13,7 +17,7 @@ type SearchOptions = {
 type SearchProvider = (
   query: string,
   options: SearchOptions,
-) => Promise<CourseItem[]>
+) => Promise<unknown>
 
 type Logger = Pick<Console, "error">
 
@@ -22,12 +26,6 @@ export type CourseTreeApiOptions = {
   logger?: Logger
   search?: SearchProvider
 }
-
-type ErrorCode =
-  | "INVALID_QUERY"
-  | "METHOD_NOT_ALLOWED"
-  | "NOT_FOUND"
-  | "INTERNAL_ERROR"
 
 function defaultSearch(query: string, { signal }: SearchOptions) {
   signal.throwIfAborted()
@@ -66,10 +64,11 @@ function sendJson(response: ServerResponse, status: number, payload: unknown) {
 function sendError(
   response: ServerResponse,
   status: number,
-  code: ErrorCode,
+  code: ApiErrorCode,
   message: string,
 ) {
-  sendJson(response, status, { error: { code, message } })
+  const payload = apiErrorResponseSchema.parse({ error: { code, message } })
+  sendJson(response, status, payload)
 }
 
 /**
@@ -100,7 +99,7 @@ export function createCourseTreeApiHandler({
     }
 
     if (url.pathname === "/health" && request.method === "GET") {
-      sendJson(response, 200, { status: "ok" })
+      sendJson(response, 200, healthResponseSchema.parse({ status: "ok" }))
       return
     }
 
@@ -121,9 +120,8 @@ export function createCourseTreeApiHandler({
     }
 
     const queryValues = url.searchParams.getAll("query")
-    const query = queryValues[0]?.trim() ?? ""
 
-    if (queryValues.length !== 1 || query.length === 0) {
+    if (queryValues.length !== 1) {
       sendError(
         response,
         400,
@@ -133,12 +131,16 @@ export function createCourseTreeApiHandler({
       return
     }
 
-    if (query.length > MAX_QUERY_LENGTH) {
+    const parsedRequest = courseTreeSearchRequestSchema.safeParse({
+      query: queryValues[0],
+    })
+
+    if (!parsedRequest.success) {
       sendError(
         response,
         400,
         "INVALID_QUERY",
-        `Query must be ${MAX_QUERY_LENGTH} characters or fewer.`,
+        parsedRequest.error.issues[0]?.message ?? "Query is invalid.",
       )
       return
     }
@@ -152,7 +154,10 @@ export function createCourseTreeApiHandler({
     response.once("close", abortRequest)
 
     try {
-      const items = await search(query, { signal: requestController.signal })
+      const result = await search(parsedRequest.data.query, {
+        signal: requestController.signal,
+      })
+      const items = courseTreeSearchResponseSchema.parse(result)
       if (!requestController.signal.aborted) {
         sendJson(response, 200, items)
       }
