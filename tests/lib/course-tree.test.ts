@@ -1,4 +1,4 @@
-import { flattenCourseTree } from "@/lib/course-tree";
+import { flattenCourseTree, getVisibleCourseTreeRows } from "@/lib/course-tree";
 import type { CourseTreeRow } from "@/lib/course-tree"
 import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema"
 import { describe, expect, it } from "vitest";
@@ -92,5 +92,48 @@ describe("flattenCourseTree", () => {
       { id: 3, name: "Colloidal Solution of Starch", depth: 2 },
       { id: 4, name: "Procedure", depth: 3 },
     ]);
+  });
+});
+
+describe("getVisibleCourseTreeRows", () => {
+  const rows = flattenCourseTree(sampleItems);
+
+  it("shows every row by default and identifies parents", () => {
+    const visibleRows = getVisibleCourseTreeRows(rows, new Set());
+
+    expect(visibleRows.map(({ item, hasChildren }) => [item.id, hasChildren])).toEqual([
+      [1, true],
+      [3, true],
+      [2, false],
+      [7, false],
+      [4, false],
+      [6, true],
+      [5, false],
+    ]);
+  });
+
+  it("hides all descendants of a collapsed root but keeps later roots", () => {
+    const visibleRows = getVisibleCourseTreeRows(rows, new Set([1]));
+
+    expect(visibleRows.map(({ item }) => item.id)).toEqual([1, 6, 5]);
+  });
+
+  it("hides nested descendants while preserving their parent's siblings", () => {
+    const visibleRows = getVisibleCourseTreeRows(rows, new Set([3]));
+
+    expect(visibleRows.map(({ item }) => item.id)).toEqual([1, 3, 4, 6, 5]);
+  });
+
+  it("preserves nested collapsed state while an ancestor is collapsed", () => {
+    const collapsedIds = new Set([1, 3]);
+
+    expect(
+      getVisibleCourseTreeRows(rows, collapsedIds).map(({ item }) => item.id),
+    ).toEqual([1, 6, 5]);
+
+    collapsedIds.delete(1);
+    expect(
+      getVisibleCourseTreeRows(rows, collapsedIds).map(({ item }) => item.id),
+    ).toEqual([1, 3, 4, 6, 5]);
   });
 });

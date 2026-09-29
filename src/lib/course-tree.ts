@@ -9,6 +9,10 @@ export type CourseTreeRow = {
   depth: number;
 };
 
+export type CollapsibleCourseTreeRow = CourseTreeRow & {
+  hasChildren: boolean;
+};
+
 /**
  * Converts a flat course tree into display order.
  *
@@ -48,4 +52,38 @@ export function flattenCourseTree(items: CourseItem[]): CourseTreeRow[] {
   // Each recursive call passes depth + 1 to that parent's children.
   appendSubtree(0, 0);
   return rows;
+}
+
+/**
+ * Derives the currently visible rows without changing the flat preorder model.
+ *
+ * In preorder, a node has children when the following row is deeper. When a
+ * node is collapsed, every following row remains hidden until traversal reaches
+ * the same depth (a sibling) or a shallower depth (an ancestor's sibling).
+ */
+export function getVisibleCourseTreeRows(
+  rows: CourseTreeRow[],
+  collapsedItemIds: ReadonlySet<number>,
+): CollapsibleCourseTreeRow[] {
+  const visibleRows: CollapsibleCourseTreeRow[] = [];
+  let collapsedAncestorDepth: number | null = null;
+
+  for (const [index, row] of rows.entries()) {
+    if (
+      collapsedAncestorDepth !== null &&
+      row.depth > collapsedAncestorDepth
+    ) {
+      continue;
+    }
+
+    collapsedAncestorDepth = null;
+    const hasChildren = (rows[index + 1]?.depth ?? -1) > row.depth;
+    visibleRows.push({ ...row, hasChildren });
+
+    if (hasChildren && collapsedItemIds.has(row.item.id)) {
+      collapsedAncestorDepth = row.depth;
+    }
+  }
+
+  return visibleRows;
 }

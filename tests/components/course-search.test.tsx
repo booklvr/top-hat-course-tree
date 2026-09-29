@@ -40,6 +40,81 @@ describe("CourseSearch", () => {
     expect(screen.getByText("- Surface Chemistry")).toBeTruthy()
   })
 
+  it("collapses and expands descendants without hiding later roots", async () => {
+    searchCourseTreeMock.mockResolvedValue([
+      { id: 3, name: "Deep topic", parent_id: 2 },
+      { id: 2, name: "Surface Chemistry", parent_id: 1 },
+      { id: 1, name: "Lab Experiment 1", parent_id: 0 },
+      { id: 4, name: "Lab Experiment 2", parent_id: 0 },
+    ])
+
+    render(<CourseSearch />)
+    const user = await submitSearch("Lab")
+
+    const toggle = await screen.findByRole("button", {
+      name: "Collapse Lab Experiment 1",
+    })
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+
+    await user.click(toggle)
+
+    expect(screen.queryByText("- Surface Chemistry")).toBeNull()
+    expect(screen.queryByText("- - Deep topic")).toBeNull()
+    expect(screen.getByText("Lab Experiment 2")).toBeTruthy()
+
+    const expandToggle = screen.getByRole("button", {
+      name: "Expand Lab Experiment 1",
+    })
+    expect(expandToggle.getAttribute("aria-expanded")).toBe("false")
+    await user.click(expandToggle)
+
+    expect(screen.getByText("- Surface Chemistry")).toBeTruthy()
+    expect(screen.getByText("- - Deep topic")).toBeTruthy()
+  })
+
+  it("renders leaves as text without unnecessary disclosure buttons", async () => {
+    searchCourseTreeMock.mockResolvedValue([
+      { id: 1, name: "Leaf item", parent_id: 0 },
+    ])
+
+    render(<CourseSearch />)
+    await submitSearch("Leaf")
+
+    expect(await screen.findByText("Leaf item")).toBeTruthy()
+    expect(
+      screen.queryByRole("button", { name: /Leaf item/ }),
+    ).toBeNull()
+  })
+
+  it("resets collapsed state when a new search starts", async () => {
+    searchCourseTreeMock
+      .mockResolvedValueOnce([
+        { id: 2, name: "First child", parent_id: 1 },
+        { id: 1, name: "Shared root", parent_id: 0 },
+      ])
+      .mockResolvedValueOnce([
+        { id: 3, name: "New child", parent_id: 1 },
+        { id: 1, name: "Shared root", parent_id: 0 },
+      ])
+
+    render(<CourseSearch />)
+    const user = await submitSearch("First")
+    await user.click(
+      await screen.findByRole("button", { name: "Collapse Shared root" }),
+    )
+    expect(screen.queryByText("- First child")).toBeNull()
+
+    const input = screen.getByRole("textbox", { name: "Search" })
+    await user.clear(input)
+    await user.type(input, "New")
+    await user.click(screen.getByRole("button", { name: "Search" }))
+
+    expect(await screen.findByText("- New child")).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: "Collapse Shared root" }),
+    ).toBeTruthy()
+  })
+
   it("shows an empty state for a successful search with no items", async () => {
     searchCourseTreeMock.mockResolvedValue([])
 

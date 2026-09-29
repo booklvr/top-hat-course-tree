@@ -1,4 +1,5 @@
-import { useState, type SubmitEvent } from "react"
+import { useMemo, useState, type SubmitEvent } from "react"
+import { ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -10,7 +11,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { searchCourseTree } from "@/api/course-tree-search"
-import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree"
+import {
+  flattenCourseTree,
+  getVisibleCourseTreeRows,
+  type CourseTreeRow,
+} from "@/lib/course-tree"
 import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree"
 
 type RequestStatus = "idle" | "loading" | "success" | "error"
@@ -31,9 +36,16 @@ export function CourseSearch() {
   const [query, setQuery] = useState("")
   const [rows, setRows] = useState<CourseTreeRow[]>([])
   const [status, setStatus] = useState<RequestStatus>("idle")
+  const [collapsedItemIds, setCollapsedItemIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  )
 
   const trimmedQuery = query.trim()
   const isLoading = status === "loading"
+  const visibleRows = useMemo(
+    () => getVisibleCourseTreeRows(rows, collapsedItemIds),
+    [collapsedItemIds, rows],
+  )
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -41,6 +53,7 @@ export function CourseSearch() {
     if (!trimmedQuery || isLoading) return
 
     setStatus("loading")
+    setCollapsedItemIds(new Set())
 
     try {
       const items = await searchCourseTree(trimmedQuery)
@@ -50,6 +63,18 @@ export function CourseSearch() {
       setRows([])
       setStatus("error")
     }
+  }
+
+  function toggleItem(itemId: number) {
+    setCollapsedItemIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      if (nextIds.has(itemId)) {
+        nextIds.delete(itemId)
+      } else {
+        nextIds.add(itemId)
+      }
+      return nextIds
+    })
   }
 
   return (
@@ -124,12 +149,34 @@ export function CourseSearch() {
 
             {status === "success" && rows.length > 0 ? (
               <ul className="flex flex-col gap-1.5 text-sm leading-relaxed">
-                {rows.map((row) => (
-                  <li key={row.item.id}>
-                    {"- ".repeat(row.depth)}
-                    {row.item.name}
-                  </li>
-                ))}
+                {visibleRows.map((row) => {
+                  const isExpanded = !collapsedItemIds.has(row.item.id)
+
+                  return (
+                    <li key={row.item.id} className="flex min-w-0 items-start">
+                      {row.hasChildren ? (
+                        <button
+                          type="button"
+                          aria-expanded={isExpanded}
+                          aria-label={`${isExpanded ? "Collapse" : "Expand"} ${row.item.name}`}
+                          onClick={() => toggleItem(row.item.id)}
+                          className="mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                          <ChevronRight
+                            aria-hidden="true"
+                            className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                          />
+                        </button>
+                      ) : (
+                        <span aria-hidden="true" className="mr-1 size-6 shrink-0" />
+                      )}
+                      <span className="min-w-0 pt-0.5">
+                        {"- ".repeat(row.depth)}
+                        {row.item.name}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             ) : null}
           </section>
