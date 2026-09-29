@@ -33,32 +33,13 @@ export function flattenCourseTree(items: CourseItem[]): CourseTreeRow[] {
     }
   }
 
-  // const rows: CourseTreeRow[] = [];
-  // const pendingRows: CourseTreeRow[] = [];
-  // const roots = childrenByParentId.get(0) ?? [];
-
-  // // Push in reverse order because the stack is last-in, first-out. This is an
-  // // iterative preorder traversal: emit a parent, then each of its descendants.
-  // for (let index = roots.length - 1; index >= 0; index -= 1) {
-  //   pendingRows.push({ item: roots[index], depth: 0 });
-  // }
-
-  // while (pendingRows.length > 0) {
-  //   const row = pendingRows.pop();
-  //   if (!row) break;
-
-  //   rows.push(row);
-  //   const children = childrenByParentId.get(row.item.id) ?? [];
-  //   for (let index = children.length - 1; index >= 0; index -= 1) {
-  //     pendingRows.push({ item: children[index], depth: row.depth + 1 });
-  //   }
-  // }
-
   const rows: CourseTreeRow[] = [];
   const pendingRows: CourseTreeRow[] = [];
   const roots = childrenByParentId.get(0) ?? [];
 
-  for (let i = roots.length - 1; i >= 1; i -= 1) {
+  // Push in reverse order because the stack is last-in, first-out. This is an
+  // iterative preorder traversal: emit a parent, then each of its descendants.
+  for (let i = roots.length - 1; i >= 0; i -= 1) {
     pendingRows.push({ item: roots[i], depth: 0 });
   }
 
@@ -68,7 +49,7 @@ export function flattenCourseTree(items: CourseItem[]): CourseTreeRow[] {
 
     rows.push(row);
 
-    const children = childrenByParentId.get(row.item.id);
+    const children = childrenByParentId.get(row.item.id) ?? [];
 
     for (let i = children.length - 1; i >= 0; i -= 1) {
       pendingRows.push({
