@@ -5,7 +5,7 @@ import {
   SEARCH_ERROR_MESSAGE,
   searchCourseTree,
 } from "@/lib/search-course-tree"
-import { courseTreeSearchResponseSchema } from "@/schemas/course-tree/courseTreeSchema"
+import { courseTreeSearchResponseSchema } from "@shared/course-tree-contract"
 
 const sampleItems = [
   { id: 1, name: "Lab Experiment 1", parent_id: 0 },

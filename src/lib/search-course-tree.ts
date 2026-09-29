@@ -2,7 +2,7 @@ import {
   courseTreeSearchRequestSchema,
   courseTreeSearchResponseSchema,
   type CourseItem,
-} from "@/schemas/course-tree/courseTreeSchema";
+} from "@shared/course-tree-contract";
 
 // A relative default keeps browser requests same-origin. During development,
 // Vite proxies `/api` to the local service; production can use the same reverse

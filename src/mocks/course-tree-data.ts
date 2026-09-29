@@ -1,4 +1,4 @@
-import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema"
+import type { CourseItem } from "@shared/course-tree-contract"
 
 import type { MockScenarioId } from "@/mocks/mock-scenario"
 

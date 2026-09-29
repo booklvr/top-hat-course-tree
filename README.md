@@ -104,7 +104,6 @@ Tree ordering and indentation logic are covered in `tests/lib/course-tree.test.t
 - `src/components/course-search.tsx` — search form, loading/error/empty states, results list
 - `src/api/course-tree-search.ts` — chooses live API vs mocks (`VITE_USE_MOCK_API`)
 - `shared/course-tree-contract.ts` — shared Zod transport schemas and inferred types
-- `src/schemas/course-tree/courseTreeSchema.ts` — compatibility exports for client imports
 - `src/lib/course-tree.ts` — flat list → preorder rows with depth (`CourseTreeRow`)
 - `src/lib/search-course-tree.ts` — fetch the configured API and validate its JSON
 - `src/mocks/` — mock data, client-side filter, scenario picker (dev only)

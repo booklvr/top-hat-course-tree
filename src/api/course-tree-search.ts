@@ -1,5 +1,5 @@
 import { searchCourseTree as searchLiveCourseTree } from "@/lib/search-course-tree"
-import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema"
+import type { CourseItem } from "@shared/course-tree-contract"
 
 const useMockApi = import.meta.env.VITE_USE_MOCK_API === "true"
 

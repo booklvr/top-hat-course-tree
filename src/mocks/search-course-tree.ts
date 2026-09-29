@@ -2,7 +2,7 @@ import { getCourseTreeFixture } from "@/mocks/course-tree-data"
 import { filterCourseTreeByQuery } from "@/mocks/filter-course-tree"
 import { getMockScenario } from "@/mocks/mock-scenario"
 import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree"
-import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema"
+import type { CourseItem } from "@shared/course-tree-contract"
 
 const MOCK_NETWORK_DELAY_MS = 1000
 

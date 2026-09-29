@@ -1,6 +1,6 @@
 import { flattenCourseTree } from "@/lib/course-tree";
 import type { CourseTreeRow } from "@/lib/course-tree"
-import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema"
+import type { CourseItem } from "@shared/course-tree-contract"
 import { describe, expect, it } from "vitest";
 
 const sampleItems: CourseItem[] = [

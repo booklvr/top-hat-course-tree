@@ -1,4 +1,4 @@
-import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema";
+import type { CourseItem } from "@shared/course-tree-contract";
 
 /**
  * One row in render order.
