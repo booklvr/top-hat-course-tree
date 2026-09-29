@@ -12,7 +12,7 @@ vi.mock("@/api/course-tree-search", () => ({
 }))
 
 const searchCourseTreeMock = vi.mocked(searchCourseTree)
-const SEARCH_DEBOUNCE_MS = 500
+const SEARCH_DEBOUNCE_MS = 250
 
 function changeQuery(query: string) {
   const input = screen.getByRole("textbox", { name: "Search" })
@@ -142,6 +142,47 @@ describe("CourseSearch", () => {
       expect.any(AbortSignal),
     )
     expect(screen.getByText("No course items found.")).toBeTruthy()
+  })
+
+  it("does not commit results from an aborted request", async () => {
+    let resolveFirstSearch: (
+      items: Awaited<ReturnType<typeof searchCourseTree>>,
+    ) => void = () => {}
+
+    searchCourseTreeMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstSearch = resolve
+          }),
+      )
+      .mockResolvedValueOnce([])
+
+    render(<CourseSearch />)
+    changeQuery("Lab")
+    await finishDebounce()
+
+    changeQuery("Labs")
+    await act(async () => {
+      resolveFirstSearch([
+        { id: 1, name: "Stale result", parent_id: 0 },
+      ])
+    })
+
+    expect(screen.queryByText("Stale result")).toBeNull()
+    expect(screen.queryByText(SEARCH_ERROR_MESSAGE)).toBeNull()
+
+    await finishDebounce()
+    expect(screen.getByText("No course items found.")).toBeTruthy()
+  })
+
+  it("does not search for an empty or whitespace-only query", async () => {
+    render(<CourseSearch />)
+    changeQuery("   ")
+    await finishDebounce()
+
+    expect(searchCourseTreeMock).not.toHaveBeenCalled()
+    expect(screen.getByText("Results will appear here.")).toBeTruthy()
   })
 
   it("keeps the input editable while a search is in flight", async () => {
