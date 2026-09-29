@@ -1,26 +1,28 @@
-import { useState, type SubmitEvent } from "react"
+import { useState, type SubmitEvent } from "react";
 
-import { Button } from "@/components/ui/button"
+import { searchCourseTree } from "@/api/course-tree-search";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { searchCourseTree } from "@/api/course-tree-search"
-import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree"
-import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree"
+} from "@/components/ui/select";
 
-type RequestStatus = "idle" | "loading" | "success" | "error"
+import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree";
+import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree";
+
+type RequestStatus = "idle" | "loading" | "success" | "error";
 
 function SearchResultsSkeleton() {
   return (
@@ -31,48 +33,49 @@ function SearchResultsSkeleton() {
       <Skeleton className="ml-4 h-4 w-full max-w-md" />
       <Skeleton className="h-4 w-full max-w-xs" />
     </div>
-  )
+  );
 }
 
 export function CourseSearch() {
-  const [query, setQuery] = useState("")
-  const [searchHistory, setSearchHistory] = useState<string[]>([])
-  const [rows, setRows] = useState<CourseTreeRow[]>([])
-  const [status, setStatus] = useState<RequestStatus>("idle")
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<CourseTreeRow[]>([]);
+  const [status, setStatus] = useState<RequestStatus>("idle");
+  const [previousSearches, setPreviousSearches] = useState<string[]>([]);
 
-  const trimmedQuery = query.trim()
-  const isLoading = status === "loading"
+  const trimmedQuery = query.trim();
+  const isLoading = status === "loading";
 
-  async function runSearch(searchTerm: string) {
-    setSearchHistory((history) => [
-      searchTerm,
-      ...history.filter((term) => term !== searchTerm),
-    ])
-    setStatus("loading")
+  async function runSearch(searchQuery: string) {
+    if (!searchQuery || isLoading) return;
+
+    // Keep an ordered set: a repeated search moves to the front instead of
+    // creating another dropdown option.
+    setPreviousSearches((previous) => [
+      searchQuery,
+      ...previous.filter((search) => search !== searchQuery),
+    ]);
+    setStatus("loading");
 
     try {
-      const items = await searchCourseTree(searchTerm)
-      setRows(flattenCourseTree(items))
-      setStatus("success")
+      const items = await searchCourseTree(searchQuery);
+      setRows(flattenCourseTree(items));
+      setStatus("success");
     } catch {
-      setRows([])
-      setStatus("error")
+      setRows([]);
+      setStatus("error");
     }
   }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!trimmedQuery || isLoading) return
-
-    void runSearch(trimmedQuery)
+    event.preventDefault();
+    void runSearch(trimmedQuery);
   }
 
-  function handleHistoryChange(searchTerm: string | null) {
-    if (!searchTerm || isLoading) return
+  function handlePreviousSearch(selected: string | null) {
+    if (!selected) return;
 
-    setQuery(searchTerm)
-    void runSearch(searchTerm)
+    setQuery(selected);
+    void runSearch(selected);
   }
 
   return (
@@ -89,54 +92,55 @@ export function CourseSearch() {
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
             Course Tree Search
           </h1>
-          <CardDescription>
-            Search course content by keyword.
-          </CardDescription>
+          <CardDescription>Search course content by keyword.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-0">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="course-search" className="text-sm font-medium">
-                Search
-              </label>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <Input
-                    id="course-search"
-                    name="query"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="e.g. Lab"
-                    autoComplete="off"
-                    disabled={isLoading}
-                  />
-                  {searchHistory.length > 0 ? (
-                    <Select value={null} onValueChange={handleHistoryChange}>
-                      <SelectTrigger
-                        aria-label="Previous searches"
-                        className="w-full"
-                        disabled={isLoading}
-                      >
-                        <SelectValue>Previous searches</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent align="start">
-                        {searchHistory.map((searchTerm) => (
-                          <SelectItem key={searchTerm} value={searchTerm}>
-                            {searchTerm}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : null}
-                </div>
-                <Button
-                  type="submit"
-                  disabled={!trimmedQuery || isLoading}
-                  className="min-w-24 shrink-0 hover:bg-primary-hover"
-                >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <label htmlFor="course-search" className="text-sm font-medium">
                   Search
-                </Button>
+                </label>
+                <Input
+                  id="course-search"
+                  name="query"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="e.g. Lab"
+                  autoComplete="off"
+                  disabled={isLoading}
+                />
               </div>
+              <Button
+                type="submit"
+                disabled={!trimmedQuery || isLoading}
+                className="min-w-24 shrink-0 hover:bg-primary-hover"
+              >
+                Search
+              </Button>
+            </div>
+
+            <div className="flex gap-3 sm:flex-row">
+              <Select value={null} onValueChange={handlePreviousSearch}>
+                <SelectTrigger
+                  aria-label="Previous searches"
+                  className="w-full min-w-0 flex-1"
+                  disabled={isLoading}
+                >
+                  <SelectValue placeholder="Previous searches" />
+                </SelectTrigger>
+
+                {/* Item alignment would overlay the selected option on the
+                    trigger; disabling it keeps history below the control. */}
+                <SelectContent align="start" alignItemWithTrigger={false}>
+                  {previousSearches.map((search) => (
+                    <SelectItem key={search} value={search}>
+                      {search}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="hidden min-w-24 shrink-0 sm:block" aria-hidden />
             </div>
           </form>
 
@@ -179,5 +183,5 @@ export function CourseSearch() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

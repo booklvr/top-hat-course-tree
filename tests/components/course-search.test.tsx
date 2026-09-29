@@ -72,7 +72,7 @@ describe("CourseSearch", () => {
     await screen.findByText("No course items found.")
 
     await user.click(screen.getByRole("combobox", { name: "Previous searches" }))
-    await user.click(screen.getByRole("option", { name: "Lab" }))
+    await user.click(await screen.findByRole("option", { name: "Lab" }))
 
     expect(input.getAttribute("value")).toBe("Lab")
     expect(searchCourseTreeMock).toHaveBeenLastCalledWith("Lab")
@@ -89,7 +89,28 @@ describe("CourseSearch", () => {
     await screen.findByText("No course items found.")
 
     await user.click(screen.getByRole("combobox", { name: "Previous searches" }))
-    expect(screen.getAllByRole("option", { name: "Lab" })).toHaveLength(1)
+    expect(await screen.findAllByRole("option", { name: "Lab" })).toHaveLength(1)
+  })
+
+  it("orders unique search terms from most to least recent", async () => {
+    searchCourseTreeMock.mockResolvedValue([])
+
+    render(<CourseSearch />)
+    const user = await submitSearch("Lab")
+    await screen.findByText("No course items found.")
+
+    const input = screen.getByRole("textbox", { name: "Search" })
+    await user.clear(input)
+    await user.type(input, "Quiz")
+    await user.click(screen.getByRole("button", { name: "Search" }))
+    await screen.findByText("No course items found.")
+    await user.click(screen.getByRole("button", { name: "Search" }))
+    await screen.findByText("No course items found.")
+
+    await user.click(screen.getByRole("combobox", { name: "Previous searches" }))
+    expect(
+      (await screen.findAllByRole("option")).map((option) => option.textContent),
+    ).toEqual(["Quiz", "Lab"])
   })
 
   it("disables the form while a search is in flight", async () => {
