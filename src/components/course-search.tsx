@@ -1,19 +1,19 @@
-import { useState, type SubmitEvent } from "react"
+import { useState, type SubmitEvent } from "react";
 
-import { Button } from "@/components/ui/button"
+import { searchCourseTree } from "@/api/course-tree-search";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import { searchCourseTree } from "@/api/course-tree-search"
-import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree"
-import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { buildCourseTree, type CourseTreeNode } from "@/lib/course-tree";
+import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree";
 
-type RequestStatus = "idle" | "loading" | "success" | "error"
+type RequestStatus = "idle" | "loading" | "success" | "error";
 
 function SearchResultsSkeleton() {
   return (
@@ -24,32 +24,98 @@ function SearchResultsSkeleton() {
       <Skeleton className="ml-4 h-4 w-full max-w-md" />
       <Skeleton className="h-4 w-full max-w-xs" />
     </div>
-  )
+  );
+}
+
+function CourseTreeNodeView({
+  node,
+  depth,
+  collapsedNodeIds,
+  onToggle,
+}: {
+  node: CourseTreeNode;
+  depth: number;
+  collapsedNodeIds: Set<number>;
+  onToggle: (nodeId: number) => void;
+}) {
+  const hasChildren = node.children.length > 0;
+  const isExpanded = hasChildren && !collapsedNodeIds.has(node.item.id);
+
+  return (
+    <>
+      <li>
+        <span>
+          {"- ".repeat(depth)}
+          {node.item.name}
+        </span>
+        {hasChildren ? (
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.item.name}`}
+            onClick={() => onToggle(node.item.id)}
+            className="ml-2 inline-flex size-5 items-center justify-center rounded border text-xs hover:bg-muted focus-visible:outline-2"
+          >
+            {isExpanded ? "−" : "+"}
+          </button>
+        ) : null}
+      </li>
+
+      {isExpanded
+        ? node.children.map((child) => (
+            <CourseTreeNodeView
+              key={child.item.id}
+              node={child}
+              depth={depth + 1}
+              collapsedNodeIds={collapsedNodeIds}
+              onToggle={onToggle}
+            />
+          ))
+        : null}
+    </>
+  );
 }
 
 export function CourseSearch() {
-  const [query, setQuery] = useState("")
-  const [rows, setRows] = useState<CourseTreeRow[]>([])
-  const [status, setStatus] = useState<RequestStatus>("idle")
+  const [query, setQuery] = useState("");
+  const [tree, setTree] = useState<CourseTreeNode[]>([]);
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [status, setStatus] = useState<RequestStatus>("idle");
 
-  const trimmedQuery = query.trim()
-  const isLoading = status === "loading"
+  const trimmedQuery = query.trim();
+  const isLoading = status === "loading";
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
-    if (!trimmedQuery || isLoading) return
+    if (!trimmedQuery || isLoading) return;
 
-    setStatus("loading")
+    setStatus("loading");
 
     try {
-      const items = await searchCourseTree(trimmedQuery)
-      setRows(flattenCourseTree(items))
-      setStatus("success")
+      const items = await searchCourseTree(trimmedQuery);
+      setTree(buildCourseTree(items));
+      setCollapsedNodeIds(new Set());
+      setStatus("success");
     } catch {
-      setRows([])
-      setStatus("error")
+      setTree([]);
+      setCollapsedNodeIds(new Set());
+      setStatus("error");
     }
+  }
+
+  function toggleNode(nodeId: number) {
+    setCollapsedNodeIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (nextIds.has(nodeId)) {
+        nextIds.delete(nodeId);
+      } else {
+        nextIds.add(nodeId);
+      }
+      return nextIds;
+    });
   }
 
   return (
@@ -66,9 +132,7 @@ export function CourseSearch() {
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
             Course Tree Search
           </h1>
-          <CardDescription>
-            Search course content by keyword.
-          </CardDescription>
+          <CardDescription>Search course content by keyword.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-0">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -116,19 +180,22 @@ export function CourseSearch() {
               </p>
             ) : null}
 
-            {status === "success" && rows.length === 0 ? (
+            {status === "success" && tree.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No course items found.
               </p>
             ) : null}
 
-            {status === "success" && rows.length > 0 ? (
+            {status === "success" && tree.length > 0 ? (
               <ul className="flex flex-col gap-1.5 text-sm leading-relaxed">
-                {rows.map((row) => (
-                  <li key={row.item.id}>
-                    {"- ".repeat(row.depth)}
-                    {row.item.name}
-                  </li>
+                {tree.map((node) => (
+                  <CourseTreeNodeView
+                    key={node.item.id}
+                    node={node}
+                    depth={0}
+                    collapsedNodeIds={collapsedNodeIds}
+                    onToggle={toggleNode}
+                  />
                 ))}
               </ul>
             ) : null}
@@ -136,5 +203,5 @@ export function CourseSearch() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

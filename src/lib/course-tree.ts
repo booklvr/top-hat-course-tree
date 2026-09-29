@@ -1,51 +1,37 @@
 import type { CourseItem } from "@/schemas/course-tree/courseTreeSchema";
 
-/**
- * One row in render order.
- * `depth` is steps from a root: `0` for a root, then `1`, `2`, and so on.
- */
-export type CourseTreeRow = {
+export type CourseTreeNode = {
   item: CourseItem;
-  depth: number;
+  children: CourseTreeNode[];
 };
 
 /**
- * Converts a flat course tree into display order.
+ * Converts the API's flat course items into a nested tree.
  *
- * Items are emitted with a preorder depth-first traversal, so each parent
- * is immediately followed by its descendants. Roots have depth 0, and each
- * nested level increases depth by one. Root and sibling order are preserved.
+ * Nodes are indexed before parent-child relationships are connected, so a
+ * child can appear before its parent in the input. The second pass follows
+ * input encounter order, preserving root and sibling order in O(n) time.
  */
-export function flattenCourseTree(items: CourseItem[]): CourseTreeRow[] {
-  // Index children by parent so the walk can find a parent's children in one
-  // lookup. parent_id 0 holds the roots. Push keeps input encounter order.
-  const childrenByParentId = new Map<number, CourseItem[]>();
+export function buildCourseTree(items: CourseItem[]): CourseTreeNode[] {
+  const nodesById = new Map<number, CourseTreeNode>();
 
   for (const item of items) {
-    const siblings = childrenByParentId.get(item.parent_id);
-    if (siblings) {
-      siblings.push(item);
-    } else {
-      childrenByParentId.set(item.parent_id, [item]);
-    }
+    nodesById.set(item.id, { item, children: [] });
   }
 
-  const rows: CourseTreeRow[] = [];
+  const roots: CourseTreeNode[] = [];
 
-  // Preorder: emit the child, then walk its children before the next sibling.
-  // That places the whole subtree directly after the parent.
-  function appendSubtree(parentId: number, depth: number) {
-    const children = childrenByParentId.get(parentId);
-    if (!children) return;
+  for (const item of items) {
+    const node = nodesById.get(item.id);
+    if (!node) continue;
 
-    for (const item of children) {
-      rows.push({ item, depth });
-      appendSubtree(item.id, depth + 1);
+    if (item.parent_id === 0) {
+      roots.push(node);
+      continue;
     }
+
+    nodesById.get(item.parent_id)?.children.push(node);
   }
 
-  // Roots are the children of parent id 0, so they start at depth 0.
-  // Each recursive call passes depth + 1 to that parent's children.
-  appendSubtree(0, 0);
-  return rows;
+  return roots;
 }
