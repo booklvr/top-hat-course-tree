@@ -1,19 +1,28 @@
-import { useState, type SubmitEvent } from "react"
+import { useState, type SubmitEvent } from "react";
 
-import { Button } from "@/components/ui/button"
+import { searchCourseTree } from "@/api/course-tree-search";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import { searchCourseTree } from "@/api/course-tree-search"
-import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree"
-import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
-type RequestStatus = "idle" | "loading" | "success" | "error"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree";
+import { SEARCH_ERROR_MESSAGE } from "@/lib/search-course-tree";
+
+type RequestStatus = "idle" | "loading" | "success" | "error";
 
 function SearchResultsSkeleton() {
   return (
@@ -24,32 +33,59 @@ function SearchResultsSkeleton() {
       <Skeleton className="ml-4 h-4 w-full max-w-md" />
       <Skeleton className="h-4 w-full max-w-xs" />
     </div>
-  )
+  );
 }
 
 export function CourseSearch() {
-  const [query, setQuery] = useState("")
-  const [rows, setRows] = useState<CourseTreeRow[]>([])
-  const [status, setStatus] = useState<RequestStatus>("idle")
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<CourseTreeRow[]>([]);
+  const [status, setStatus] = useState<RequestStatus>("idle");
+  const [previousSearches, setPreviousSearches] = useState<string[]>([]);
+  const [selectedPrevious, setSelectedPrevious] = useState<string>("");
 
-  const trimmedQuery = query.trim()
-  const isLoading = status === "loading"
+  const trimmedQuery = query.trim();
+  const isLoading = status === "loading";
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
-    if (!trimmedQuery || isLoading) return
+    if (!trimmedQuery || isLoading) return;
 
-    setStatus("loading")
+    setStatus("loading");
+
+    const endResult: CourseI;
 
     try {
-      const items = await searchCourseTree(trimmedQuery)
-      setRows(flattenCourseTree(items))
-      setStatus("success")
+      const items = await searchCourseTree(trimmedQuery);
+      setRows(flattenCourseTree(items));
+      setStatus("success");
+      setPreviousSearches([...previousSearches, trimmedQuery]);
     } catch {
-      setRows([])
-      setStatus("error")
+      setRows([]);
+      setStatus("error");
     }
+  }
+
+  async function handlePreviousSearchAsync() {
+    if (!trimmedQuery || isLoading) return;
+
+    setStatus("loading");
+
+    try {
+      const items = await searchCourseTree(trimmedQuery);
+      setRows(flattenCourseTree(items));
+      setStatus("success");
+      setPreviousSearches([...previousSearches, trimmedQuery]);
+    } catch {
+      setRows([]);
+      setStatus("error");
+    }
+  }
+
+  function handlePreviousSearch(selected: string) {
+    setQuery(selected);
+    setSelectedPrevious(selected);
+    handlePreviousSearchAsync();
   }
 
   return (
@@ -66,9 +102,7 @@ export function CourseSearch() {
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
             Course Tree Search
           </h1>
-          <CardDescription>
-            Search course content by keyword.
-          </CardDescription>
+          <CardDescription>Search course content by keyword.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-0">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -96,6 +130,26 @@ export function CourseSearch() {
               </Button>
             </div>
           </form>
+
+          <Select value={selectedPrevious} onValueChange={handlePreviousSearch}>
+            <SelectTrigger
+              size="sm"
+              className="h-auto min-h-0 border-0 bg-transparent px-0 py-0 text-xs text-muted-foreground shadow-none hover:bg-transparent focus-visible:ring-0"
+            >
+              <SelectValue>{}</SelectValue>
+            </SelectTrigger>
+            <SelectContent
+              align="end"
+              alignItemWithTrigger={false}
+              className="min-w-40"
+            >
+              {previousSearches.map((option) => (
+                <SelectItem key={option} value={option} className="text-xs">
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <section
             aria-live="polite"
@@ -136,5 +190,5 @@ export function CourseSearch() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
