@@ -82,7 +82,7 @@ export function CourseSearch() {
                   name="query"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="e.g. Lab"
+                  placeholder="e.g. La Ex 1"
                   autoComplete="off"
                   disabled={isLoading}
                 />

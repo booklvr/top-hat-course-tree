@@ -31,12 +31,16 @@ Open the URL Vite prints (usually `http://localhost:5173`). Use the **Mock** dro
 | Query | Expected behavior |
 | --- | --- |
 | `Lab` | Chemistry-style tree (see assignment example) |
+| `La Ex 1` | `Lab Experiment 1` and its tree context |
 | `error` | **Empty results** (success state, not an error banner) |
 
 - **Network failure** scenario — simulates a failed request (error message in the UI).
 - Query **`error`** in any mock scenario — same as the assignment tip: empty list, not a network error.
 
-Search filtering in mock mode is implemented in `src/mocks/filter-course-tree.ts`. The real API filters on the server; the client only **flattens** the response via `flattenCourseTree`.
+Queries containing multiple terms are split on whitespace and searched in
+parallel. The client merges the responses by item ID, keeps items whose names
+contain every term, and preserves their ancestors and descendants for tree
+context. Mock mode uses the same matching rules as the live API flow.
 
 ### Live sandbox API
 
