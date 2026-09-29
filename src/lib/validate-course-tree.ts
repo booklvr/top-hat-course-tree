@@ -22,22 +22,17 @@ export class InvalidCourseTreeError extends Error {
   }
 }
 
-/**
- * Validates cross-item structure: duplicate ids, bad parent edges, and cycles.
- * Cycle detection walks parent_id upward in a loop (not recursion) so deep
- * valid trees cannot overflow the JavaScript call stack.
- */
-export function getCourseTreeValidationIssues(
-  items: CourseItem[],
-): CourseTreeValidationIssue[] {
-  const issues: CourseTreeValidationIssue[] = []
-  const itemsById = new Map<number, CourseItem>()
-  let hasDuplicateIds = false
+type ItemIndexResult = {
+  itemsById: Map<number, CourseItem>
+  issues: CourseTreeValidationIssue[]
+}
 
-  // Pass 1: unique ids (needed for parent lookups in later passes).
+function buildItemIndex(items: CourseItem[]): ItemIndexResult {
+  const itemsById = new Map<number, CourseItem>()
+  const issues: CourseTreeValidationIssue[] = []
+
   for (const item of items) {
     if (itemsById.has(item.id)) {
-      hasDuplicateIds = true
       issues.push({
         code: "duplicate-id",
         itemId: item.id,
@@ -49,7 +44,15 @@ export function getCourseTreeValidationIssues(
     itemsById.set(item.id, item)
   }
 
-  // Pass 2: per-item parent edges (self-reference, dangling parent_id).
+  return { itemsById, issues }
+}
+
+function getParentEdgeIssues(
+  items: CourseItem[],
+  itemsById: Map<number, CourseItem>,
+): CourseTreeValidationIssue[] {
+  const issues: CourseTreeValidationIssue[] = []
+
   for (const item of items) {
     if (item.parent_id === item.id) {
       issues.push({
@@ -66,22 +69,20 @@ export function getCourseTreeValidationIssues(
     }
   }
 
-  // Duplicate ids make parent relationships ambiguous, so reporting those is
-  // more useful than attempting cycle detection against an arbitrary duplicate.
-  if (hasDuplicateIds) return issues
+  return issues
+}
 
-  // Pass 3: cycles in the parent_id graph. Each item has one parent, so following
-  // parent_id upward from any node is a single chain. A cycle is when that chain
-  // never reaches parent_id === 0 and revisits a node (e.g. 1 → 2 → 1).
+function getCycleIssues(
+  items: CourseItem[],
+  itemsById: Map<number, CourseItem>,
+): CourseTreeValidationIssue[] {
+  const issues: CourseTreeValidationIssue[] = []
   const fullyCheckedIds = new Set<number>()
 
   for (const startingItem of items) {
-    // This id was already on a finished upward walk (same parent chain as an earlier
-    // start item), so cycle detection for that chain is done — skip to the next row.
+    // This item's parent chain was completed during an earlier walk.
     if (fullyCheckedIds.has(startingItem.id)) continue
 
-    // The array preserves visit order; the map tells us whether and where an id
-    // already appeared during this particular walk.
     const visitedIdsInThisWalk: number[] = []
     const visitIndexById = new Map<number, number>()
     let currentItem: CourseItem | undefined = startingItem
@@ -91,7 +92,7 @@ export function getCourseTreeValidationIssues(
       currentItem.parent_id !== 0 &&
       !fullyCheckedIds.has(currentItem.id)
     ) {
-      // Self-reference was reported in pass 2; stop without emitting a cycle issue.
+      // Parent-edge validation already reports simple self-references.
       if (currentItem.parent_id === currentItem.id) break
 
       const cycleStartIndex = visitIndexById.get(currentItem.id)
@@ -107,15 +108,34 @@ export function getCourseTreeValidationIssues(
 
       visitIndexById.set(currentItem.id, visitedIdsInThisWalk.length)
       visitedIdsInThisWalk.push(currentItem.id)
-      // Missing parent ends the walk (already reported in pass 2) when get returns undefined.
+      // A missing parent ends the walk; parent-edge validation reports it.
       currentItem = itemsById.get(currentItem.parent_id)
     }
 
-    // Skip re-walking these ids when another array element shares the same chain.
+    // Shared ancestors do not need to be walked again from later start items.
     for (const id of visitedIdsInThisWalk) fullyCheckedIds.add(id)
   }
 
   return issues
+}
+
+/**
+ * Validates cross-item structure: duplicate ids, bad parent edges, and cycles.
+ * Cycle detection walks parent_id upward in a loop (not recursion) so deep
+ * valid trees cannot overflow the JavaScript call stack.
+ */
+export function getCourseTreeValidationIssues(
+  items: CourseItem[],
+): CourseTreeValidationIssue[] {
+  const { itemsById, issues: duplicateIdIssues } = buildItemIndex(items)
+  const parentEdgeIssues = getParentEdgeIssues(items, itemsById)
+  const issues = [...duplicateIdIssues, ...parentEdgeIssues]
+
+  // Duplicate ids make parent relationships ambiguous, so reporting those is
+  // more useful than attempting cycle detection against an arbitrary duplicate.
+  if (duplicateIdIssues.length > 0) return issues
+
+  return [...issues, ...getCycleIssues(items, itemsById)]
 }
 
 export function assertValidCourseTree(items: CourseItem[]): void {
