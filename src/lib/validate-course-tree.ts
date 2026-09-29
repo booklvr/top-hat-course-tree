@@ -23,9 +23,9 @@ export class InvalidCourseTreeError extends Error {
 }
 
 /**
- * Checks the relationships that cannot be validated one item at a time.
- * The walk is iterative so malformed or unusually deep input cannot overflow
- * the JavaScript call stack.
+ * Validates cross-item structure: duplicate ids, bad parent edges, and cycles.
+ * Cycle detection walks parent_id upward in a loop (not recursion) so deep
+ * valid trees cannot overflow the JavaScript call stack.
  */
 export function getCourseTreeValidationIssues(
   items: CourseItem[],
@@ -34,6 +34,7 @@ export function getCourseTreeValidationIssues(
   const itemsById = new Map<number, CourseItem>()
   let hasDuplicateIds = false
 
+  // Pass 1: unique ids (needed for parent lookups in later passes).
   for (const item of items) {
     if (itemsById.has(item.id)) {
       hasDuplicateIds = true
@@ -48,6 +49,7 @@ export function getCourseTreeValidationIssues(
     itemsById.set(item.id, item)
   }
 
+  // Pass 2: per-item parent edges (self-reference, dangling parent_id).
   for (const item of items) {
     if (item.parent_id === item.id) {
       issues.push({
@@ -68,16 +70,23 @@ export function getCourseTreeValidationIssues(
   // more useful than attempting cycle detection against an arbitrary duplicate.
   if (hasDuplicateIds) return issues
 
+  // Pass 3: cycles in the parent_id graph. Each item has one parent, so following
+  // parent_id upward from any node is a single chain. A cycle is when that chain
+  // never reaches parent_id === 0 and revisits a node (e.g. 1 → 2 → 1).
   const resolvedIds = new Set<number>()
 
   for (const item of items) {
+    // This id was already on a finished upward walk (same parent chain as an earlier
+    // start item), so cycle detection for that chain is done — skip to the next row.
     if (resolvedIds.has(item.id)) continue
 
+    // Nodes on this upward walk (child toward ancestors), in visit order.
     const path: number[] = []
     const pathIndexes = new Map<number, number>()
     let current: CourseItem | undefined = item
 
     while (current && current.parent_id !== 0 && !resolvedIds.has(current.id)) {
+      // Self-reference was reported in pass 2; stop without emitting a cycle issue.
       if (current.parent_id === current.id) break
 
       const cycleStartIndex = pathIndexes.get(current.id)
@@ -93,9 +102,11 @@ export function getCourseTreeValidationIssues(
 
       pathIndexes.set(current.id, path.length)
       path.push(current.id)
+      // Missing parent ends the walk (already reported in pass 2) when get returns undefined.
       current = itemsById.get(current.parent_id)
     }
 
+    // Skip re-walking these ids when another array element shares the same chain.
     for (const id of path) resolvedIds.add(id)
   }
 
