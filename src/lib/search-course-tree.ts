@@ -3,14 +3,17 @@ import {
   type CourseItem,
 } from "@/schemas/course-tree/courseTreeSchema";
 
+// A relative default keeps browser requests same-origin. During development,
+// Vite proxies `/api` to the local service; production can use the same reverse
+// proxy shape or provide an absolute VITE_COURSE_TREE_SEARCH_URL at build time.
 const COURSE_TREE_SEARCH_URL =
-  "https://coursetreesearch-service-sandbox.dev.tophat.com/treesearch/";
+  import.meta.env.VITE_COURSE_TREE_SEARCH_URL ?? "/api/treesearch/";
 
 export const SEARCH_ERROR_MESSAGE =
   "Unable to search the course tree. Please try again.";
 
 /**
- * Validates and normalizes the sandbox API JSON body into a flat list of course items.
+ * Validates and normalizes the API JSON body into a flat list of course items.
  */
 export function parseCourseTreeSearchPayload(payload: unknown): CourseItem[] {
   try {
@@ -21,10 +24,11 @@ export function parseCourseTreeSearchPayload(payload: unknown): CourseItem[] {
 }
 
 /**
- * Searches Top Hat's course-tree endpoint and returns the flat list of items.
+ * Searches the configured course-tree endpoint and returns the flat list of items.
  */
 export async function searchCourseTree(query: string): Promise<CourseItem[]> {
-  const url = new URL(COURSE_TREE_SEARCH_URL);
+  const baseUrl = globalThis.location?.origin ?? "http://localhost";
+  const url = new URL(COURSE_TREE_SEARCH_URL, baseUrl);
   url.searchParams.set("query", query);
 
   let response: Response;

@@ -4,9 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "api": "node --env-file-if-exists=.env --experimental-strip-types server/index.ts",
+    "api:watch": "node --watch --env-file-if-exists=.env --experimental-strip-types server/index.ts",
     "dev": "vite",
     "dev:mock": "VITE_USE_MOCK_API=true vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

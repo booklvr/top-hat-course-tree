@@ -56,6 +56,7 @@ describe("searchCourseTree", () => {
     await expect(searchCourseTree("Lab & notes")).resolves.toEqual(sampleItems)
 
     const requestedUrl = fetchMock.mock.calls[0][0] as URL
+    expect(requestedUrl.pathname).toBe("/api/treesearch/")
     expect(requestedUrl.searchParams.get("query")).toBe("Lab & notes")
   })
 
