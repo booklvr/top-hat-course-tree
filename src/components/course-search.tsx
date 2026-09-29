@@ -8,6 +8,13 @@ import {
   CardHeader,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { searchCourseTree } from "@/api/course-tree-search"
 import { flattenCourseTree, type CourseTreeRow } from "@/lib/course-tree"
@@ -29,27 +36,43 @@ function SearchResultsSkeleton() {
 
 export function CourseSearch() {
   const [query, setQuery] = useState("")
+  const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [rows, setRows] = useState<CourseTreeRow[]>([])
   const [status, setStatus] = useState<RequestStatus>("idle")
 
   const trimmedQuery = query.trim()
   const isLoading = status === "loading"
 
-  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!trimmedQuery || isLoading) return
-
+  async function runSearch(searchTerm: string) {
+    setSearchHistory((history) => [
+      searchTerm,
+      ...history.filter((term) => term !== searchTerm),
+    ])
     setStatus("loading")
 
     try {
-      const items = await searchCourseTree(trimmedQuery)
+      const items = await searchCourseTree(searchTerm)
       setRows(flattenCourseTree(items))
       setStatus("success")
     } catch {
       setRows([])
       setStatus("error")
     }
+  }
+
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!trimmedQuery || isLoading) return
+
+    void runSearch(trimmedQuery)
+  }
+
+  function handleHistoryChange(searchTerm: string | null) {
+    if (!searchTerm || isLoading) return
+
+    setQuery(searchTerm)
+    void runSearch(searchTerm)
   }
 
   return (
@@ -72,28 +95,48 @@ export function CourseSearch() {
         </CardHeader>
         <CardContent className="flex flex-col gap-0">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <label htmlFor="course-search" className="text-sm font-medium">
-                  Search
-                </label>
-                <Input
-                  id="course-search"
-                  name="query"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="e.g. Lab"
-                  autoComplete="off"
-                  disabled={isLoading}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={!trimmedQuery || isLoading}
-                className="min-w-24 shrink-0 hover:bg-primary-hover"
-              >
+            <div className="flex flex-col gap-2">
+              <label htmlFor="course-search" className="text-sm font-medium">
                 Search
-              </Button>
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <Input
+                    id="course-search"
+                    name="query"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="e.g. Lab"
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                  {searchHistory.length > 0 ? (
+                    <Select value={null} onValueChange={handleHistoryChange}>
+                      <SelectTrigger
+                        aria-label="Previous searches"
+                        className="w-full"
+                        disabled={isLoading}
+                      >
+                        <SelectValue>Previous searches</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent align="start">
+                        {searchHistory.map((searchTerm) => (
+                          <SelectItem key={searchTerm} value={searchTerm}>
+                            {searchTerm}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </div>
+                <Button
+                  type="submit"
+                  disabled={!trimmedQuery || isLoading}
+                  className="min-w-24 shrink-0 hover:bg-primary-hover"
+                >
+                  Search
+                </Button>
+              </div>
             </div>
           </form>
 

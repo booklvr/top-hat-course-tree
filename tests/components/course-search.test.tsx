@@ -58,6 +58,40 @@ describe("CourseSearch", () => {
     expect(await screen.findByText(SEARCH_ERROR_MESSAGE)).toBeTruthy()
   })
 
+  it("saves search terms and reruns a search selected from history", async () => {
+    searchCourseTreeMock.mockResolvedValue([])
+
+    render(<CourseSearch />)
+    const user = await submitSearch("Lab")
+    await screen.findByText("No course items found.")
+
+    const input = screen.getByRole("textbox", { name: "Search" })
+    await user.clear(input)
+    await user.type(input, "Quiz")
+    await user.click(screen.getByRole("button", { name: "Search" }))
+    await screen.findByText("No course items found.")
+
+    await user.click(screen.getByRole("combobox", { name: "Previous searches" }))
+    await user.click(screen.getByRole("option", { name: "Lab" }))
+
+    expect(input.getAttribute("value")).toBe("Lab")
+    expect(searchCourseTreeMock).toHaveBeenLastCalledWith("Lab")
+    expect(searchCourseTreeMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("stores a repeated search term only once", async () => {
+    searchCourseTreeMock.mockResolvedValue([])
+
+    render(<CourseSearch />)
+    const user = await submitSearch("Lab")
+    await screen.findByText("No course items found.")
+    await user.click(screen.getByRole("button", { name: "Search" }))
+    await screen.findByText("No course items found.")
+
+    await user.click(screen.getByRole("combobox", { name: "Previous searches" }))
+    expect(screen.getAllByRole("option", { name: "Lab" })).toHaveLength(1)
+  })
+
   it("disables the form while a search is in flight", async () => {
     let resolveSearch: (items: []) => void
     searchCourseTreeMock.mockReturnValue(
