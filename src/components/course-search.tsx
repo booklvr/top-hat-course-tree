@@ -154,26 +154,24 @@ export function CourseSearch() {
 
                   return (
                     <li key={row.item.id} className="flex min-w-0 items-start">
+                      <span className="shrink-0 whitespace-pre pt-0.5">
+                        {"- ".repeat(row.depth)}
+                      </span>
+                      <span className="min-w-0 pt-0.5">{row.item.name}</span>
                       {row.hasChildren ? (
                         <button
                           type="button"
                           aria-expanded={isExpanded}
                           aria-label={`${isExpanded ? "Collapse" : "Expand"} ${row.item.name}`}
                           onClick={() => toggleItem(row.item.id)}
-                          className="mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                          className="ml-1 inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
                           <ChevronRight
                             aria-hidden="true"
                             className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
                           />
                         </button>
-                      ) : (
-                        <span aria-hidden="true" className="mr-1 size-6 shrink-0" />
-                      )}
-                      <span className="min-w-0 pt-0.5">
-                        {"- ".repeat(row.depth)}
-                        {row.item.name}
-                      </span>
+                      ) : null}
                     </li>
                   )
                 })}

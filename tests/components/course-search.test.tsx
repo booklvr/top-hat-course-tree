@@ -37,7 +37,9 @@ describe("CourseSearch", () => {
     await submitSearch("Lab")
 
     expect(await screen.findByText("Lab Experiment 1")).toBeTruthy()
-    expect(screen.getByText("- Surface Chemistry")).toBeTruthy()
+    expect(
+      screen.getByText("Surface Chemistry").closest("li")?.textContent,
+    ).toBe("- Surface Chemistry")
   })
 
   it("collapses and expands descendants without hiding later roots", async () => {
@@ -58,8 +60,8 @@ describe("CourseSearch", () => {
 
     await user.click(toggle)
 
-    expect(screen.queryByText("- Surface Chemistry")).toBeNull()
-    expect(screen.queryByText("- - Deep topic")).toBeNull()
+    expect(screen.queryByText("Surface Chemistry")).toBeNull()
+    expect(screen.queryByText("Deep topic")).toBeNull()
     expect(screen.getByText("Lab Experiment 2")).toBeTruthy()
 
     const expandToggle = screen.getByRole("button", {
@@ -68,8 +70,12 @@ describe("CourseSearch", () => {
     expect(expandToggle.getAttribute("aria-expanded")).toBe("false")
     await user.click(expandToggle)
 
-    expect(screen.getByText("- Surface Chemistry")).toBeTruthy()
-    expect(screen.getByText("- - Deep topic")).toBeTruthy()
+    expect(
+      screen.getByText("Surface Chemistry").closest("li")?.textContent,
+    ).toBe("- Surface Chemistry")
+    expect(screen.getByText("Deep topic").closest("li")?.textContent).toBe(
+      "- - Deep topic",
+    )
   })
 
   it("renders leaves as text without unnecessary disclosure buttons", async () => {
@@ -102,14 +108,17 @@ describe("CourseSearch", () => {
     await user.click(
       await screen.findByRole("button", { name: "Collapse Shared root" }),
     )
-    expect(screen.queryByText("- First child")).toBeNull()
+    expect(screen.queryByText("First child")).toBeNull()
 
     const input = screen.getByRole("textbox", { name: "Search" })
     await user.clear(input)
     await user.type(input, "New")
     await user.click(screen.getByRole("button", { name: "Search" }))
 
-    expect(await screen.findByText("- New child")).toBeTruthy()
+    expect(await screen.findByText("New child")).toBeTruthy()
+    expect(screen.getByText("New child").closest("li")?.textContent).toBe(
+      "- New child",
+    )
     expect(
       screen.getByRole("button", { name: "Collapse Shared root" }),
     ).toBeTruthy()
